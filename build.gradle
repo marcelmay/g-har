@@ -1,0 +1,38 @@
+apply plugin: 'groovy'
+apply plugin: 'maven'
+apply plugin: 'codenarc'
+
+version = '1.0-SNAPSHOT'
+group = 'de.m3y.ghar'
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+  classifier = 'sources'
+  from sourceSets.main.allSource
+}
+
+artifacts {
+  archives sourcesJar
+}
+
+repositories {
+  mavenCentral()
+  mavenLocal()
+}
+
+dependencies {
+  compile 'org.codehaus.groovy:groovy:2.3.6'
+  compile 'org.codehaus.groovy:groovy-json:2.3.6'
+  testCompile 'org.codehaus.groovy:groovy-test:2.3.6'
+}
+
+test {
+  testLogging {
+    exceptionFormat = 'full'
+  }
+}
+
+codenarc {
+  configFile = rootProject.file('config/codenarc/codenarc.groovy')
+  reportFormat = System.properties['codeNarcOutput'] ?: 'html'
+}
+
