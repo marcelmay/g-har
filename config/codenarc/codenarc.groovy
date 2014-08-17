@@ -116,7 +116,8 @@ ruleset {
     // rulesets/dry.xml
     DuplicateListLiteral 
     DuplicateMapLiteral 
-    DuplicateNumberLiteral 
+    DuplicateNumberLiteral{ ignoreNumbers = '-1,0,1' }
+      
     DuplicateStringLiteral 
     
     // rulesets/enhanced.xml
@@ -249,7 +250,7 @@ ruleset {
     JUnitSetUpCallsSuper 
     JUnitStyleAssertions 
     JUnitTearDownCallsSuper 
-    JUnitTestMethodWithoutAssert 
+    //JUnitTestMethodWithoutAssert 
     JUnitUnnecessarySetUp 
     JUnitUnnecessaryTearDown 
     JUnitUnnecessaryThrowsException 
@@ -305,8 +306,11 @@ ruleset {
     SerializableClassMustDefineSerialVersionUID 
     
     // rulesets/size.xml
-    AbcComplexity   // DEPRECATED: Use the AbcMetric rule instead. Requires the GMetrics jar
-    AbcMetric   // Requires the GMetrics jar
+    //AbcComplexity   // DEPRECATED: Use the AbcMetric rule instead. Requires the GMetrics jar
+    AbcMetric{   // Requires the GMetrics jar
+        maxMethodAbcScore = 85
+       // maxClassAverageMethodAbcScore = 85
+    }
     ClassSize 
     CrapMetric   // Requires the GMetrics jar and a Cobertura coverage file
     CyclomaticComplexity   // Requires the GMetrics jar

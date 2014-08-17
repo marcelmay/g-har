@@ -35,4 +35,13 @@ class HarTest extends GroovyTestCase {
     }
   }
 
+  void testValidate() {
+    ['browser-blocking-time.har', 'google.com.har', 'inline-scripts-block.har', 'softwareishard.com.har']
+            .each { resourceName ->
+      Thread.currentThread().contextClassLoader.getResource(resourceName).withInputStream {
+        Har.open(it).validate()
+      }
+    }
+  }
+
 }
