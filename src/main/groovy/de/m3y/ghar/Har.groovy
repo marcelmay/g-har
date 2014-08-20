@@ -6,15 +6,36 @@ import groovy.json.JsonSlurper
 /**
  * Handles HAR (HTTP Archive).
  *
+ * Supports
+ * <ul>
+ *   <li>parsing of JSON HAR content provided as input stream or file</li>
+ *   <li>easily processing of HAR structure, including navigation helper for related pages and entries</li>
+ *   <li>cloning for duplication</li>
+ *   <li>appending several HARs into a single archive</li>
+ * </ul>
+ *
  * See http://www.softwareishard.com/blog/har-12-spec/
  */
-class Har {
+class Har implements Cloneable {
+  /** Parsed HAR log as root reference. */
   def log
 
+  /**
+   * Creates a Har instance by stream.
+   *
+   * @param ins the input stream providing JSON HAR content for parsing.
+   * @return the newly created Har.
+   */
   static Har open(InputStream ins) {
     new Har(log: new JsonSlurper().parse(ins).log)
   }
 
+  /**
+   * Creates a Har instance by file.
+   *
+   * @param file the input file providing JSON HAR content for parsing.
+   * @return the newly created Har.
+   */
   static Har open(File file) {
     file.withInputStream { open(it) }
   }
@@ -23,6 +44,7 @@ class Har {
    * Appends the HAR pages and entries.
    *
    * Note: Does not handle page id/ref collisions!
+   *
    * @param anotherHar the other har to integrate
    */
   void append(Har anotherHar) {
@@ -31,38 +53,110 @@ class Har {
   }
 
   /**
-   * Validates against http://www.softwareishard.com/blog/har-12-spec/ .
+   * Maps all page ids to a new page id, for all entries and pages.
+   *
+   * Useful when merging HARs, to avoid id collisions.
+   *
+   * @param closure a closure receiving the old page id as parameter and returning the new page id.
+   *
+   * Example, appending '_new' to all page ids:
+   * <code>
+   *   Har.open('foo.har').mapPageIds{ it + '_new' }
+   * </code>
    */
-  void validate() {
-    new Validator().validate()
+  void mapPageIds(Closure<String> closure) {
+    pages().each { page ->
+      def oldId = page.id
+      page.id = closure.call(oldId) // new page id
+      entries(oldId).each { entry ->
+        entry.pageref = page.id // new, updated page id
+      }
+    }
   }
 
+  /**
+   * Validates against http://www.softwareishard.com/blog/har-12-spec/ and throws assertions.
+   *
+   * The validation is a best effort.
+   */
+  void validate() {
+    Validator.validate(this)
+  }
+
+  /**
+   * Lists all HAR pages.
+   *
+   * @return list of pages, or an empty list.
+   */
   List<Map> pages() {
     log.pages
   }
 
+  /**
+   * Lists all HAR entries.
+   *
+   * @return list of entries, or an empty list.
+   */
   List<Map> entries() {
     log.entries
   }
 
-  List<Map> entry(String pageId) {
+  /**
+   * Returns all entries for given page id.
+   *
+   * @param pageId the page id.
+   * @return the entries found or an empty list.
+   */
+  List<Map> entries(String pageId) {
     entries().grep { it.pageref == pageId }
   }
 
+  /**
+   * Returns all page ids.
+   *
+   * Note: Looks only at page entries.
+   *
+   * @return the page ids or an empty list.
+   */
   List<String> pageIds() {
     pages()*.id
   }
 
+  /**
+   * Converts to JSON presentation.
+   *
+   * @see #toPrettyJson()
+   * @return the JSON presentation.
+   */
   String toJson() {
     JsonOutput.toJson(['log': log])
   }
 
+  /**
+   * Converts to prettified JSON presentation.
+   *
+   * @see #toJson()
+   * @return the prettified JSON presentation.
+   */
   String toPrettyJson() {
     JsonOutput.prettyPrint(toJson())
   }
 
-  class Validator {
-    def validate() {
+  @Override
+  Har clone() throws CloneNotSupportedException {
+    new ByteArrayInputStream(toJson().getBytes('UTF-8')).withStream {
+      Har.open(it)
+    }
+  }
+
+/**
+ * Validates against http://www.softwareishard.com/blog/har-12-spec/ and throws assertions.
+ *
+ * The validation is a best effort.
+ */
+  static class Validator {
+    static validate(Har har) {
+      def log = har.log
       //    assert log.version is optional. If empty, 1.1 is assumed
       assert log.creator.name
       assert log.creator.version
@@ -128,7 +222,7 @@ class Har {
       //    assert log.comment is optional, since 1.2
     }
 
-    def validateEntryPostRequest(request) {
+    static validateEntryPostRequest(request) {
       assert request.postData
       assert request.postData.mimeType
       assert request.postData.params.size() >= 0
@@ -143,7 +237,7 @@ class Har {
       //        assert request.postData.comment is optional, since 1.2
     }
 
-    def validateEntryCache(cache) {
+    static validateEntryCache(cache) {
       if (cache) {
         //        assert entry.cache.beforeRequest is optional
         def cacheRequestValidator = { req ->
@@ -165,7 +259,7 @@ class Har {
       }
     }
 
-    def validateEntryCookies(cookies) {
+    static validateEntryCookies(cookies) {
       assert cookies.size() >= 0
       cookies.each { cookie ->
         assert cookie.name
@@ -179,7 +273,7 @@ class Har {
       }
     }
 
-    def validateEntryHeaders(headers) {
+    static validateEntryHeaders(headers) {
       assert headers.size() >= 0
       headers.each { header ->
         assert header.name
@@ -188,7 +282,7 @@ class Har {
       }
     }
 
-    def validateTimings(timings, isSsl, totalTime) {
+    static validateTimings(timings, isSsl, totalTime) {
       assert timings.blocked >= -1 // number, optional
       assert timings.dns >= -1 // number, optional
       assert timings.connect >= -1 // number, optional
@@ -202,7 +296,7 @@ class Har {
       //      assert entry.timings.comment is optional, since 1.2
     }
 
-    def validatePage(page) {
+    static validatePage(page) {
       assert page.startedDateTime
       assert page.id
       assert page.title
