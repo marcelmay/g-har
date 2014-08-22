@@ -22,7 +22,8 @@ new File('src/test/resources/softwareishard.com.har').withInputStream{
 
    // Some helpers
    assert har.pageIds() == ['page_46155', 'page_26935']
-   assert har.entry('page_46155').size() == 20
+   assert har.entries('page_46155').size() == 20
+   har.validate() // Validations using assertions
 
    // Print all URLs
    har.pageIds().each { pageId ->
