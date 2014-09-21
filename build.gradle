@@ -2,21 +2,28 @@ apply plugin: 'groovy'
 apply plugin: 'maven'
 apply plugin: 'codenarc'
 
-version = '1.0-SNAPSHOT'
+version = '1.0'
 group = 'de.m3y.ghar'
 
+// Artifacts
 task sourcesJar(type: Jar, dependsOn: classes) {
   classifier = 'sources'
   from sourceSets.main.allSource
 }
 
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
 artifacts {
-  archives sourcesJar
+  archives sourcesJar, javadocJar
 }
 
 repositories {
-  mavenCentral()
   mavenLocal()
+  mavenCentral()
+  jcenter()
 }
 
 dependencies {
@@ -36,3 +43,13 @@ codenarc {
   reportFormat = System.properties['codeNarcOutput'] ?: 'html'
 }
 
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            name = 'Bintry Repository'
+            repository(id: 'bintray-repository', url: 'https://api.bintray.com/maven/marcel-may/maven/g-har') {
+                authentication(userName: bintrayUser, password: bintrayKey)
+            }
+        }
+    }
+}
