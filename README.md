@@ -14,6 +14,11 @@ Supports
 Groovy example
 --------------
 ```groovy
+@Grab('de.m3y.ghar:g-har:1.0')
+@GrabResolver(name='bintray', root='http://dl.bintray.com/marcel-may/maven/')
+
+import de.m3y.ghar.Har
+
 new File('src/test/resources/softwareishard.com.har').withInputStream{
    har = Har.open(it)
 
@@ -27,7 +32,7 @@ new File('src/test/resources/softwareishard.com.har').withInputStream{
 
    // Print all URLs
    har.pageIds().each { pageId ->
-       har.entry(pageId).each {
+       har.entries(pageId).each {
            println( it.request.url )
        }
    }
